@@ -31397,6 +31397,8 @@
             }
 
             for (r = 0, rLen = rows.length; r < rLen; r += 1) {
+              if (rows[r][rows[r].length - 1] === '\v') // INOA
+                continue;
               rows[r] = rows[r].split('\t');
 
               for (c = 0, cLen = rows[r].length; c < cLen; c += 1) {
@@ -50530,15 +50532,29 @@
             instance.setDataAtCell(changes);
           }
         }
+
+
+
+        function handleFakeCheckbox(row, col, cellProperties$__6, callback) { // INOA
+          var colCfg = instance.getSettings().columns[col];
+          if (colCfg.type === 'checkbox' && !colCfg.readOnly) {
+            if (!cellProperties$__6.input) {
+              cellProperties$__6.input = document.createElement('input');
+              eventManager.addEventListener(cellProperties$__6.input, 'change', (function (event) {
+                instance.setDataAtRowProp(row, prop, event.target.checked ? cellProperties.checkedTemplate : cellProperties.uncheckedTemplate);
+              }));
+            }
+            callback([cellProperties$__6.input]);
+          };
+        }
         /**
          * Call callback for each found selected cell with checkbox type.
          *
          * @private
          * @param {Function} callback
          */
-
-
         function eachSelectedCheckboxCell(callback) {
+          var allCheckboxes = []; // INOA
           var selRange = instance.getSelectedRangeLast();
 
           if (!selRange) {
@@ -50559,16 +50575,20 @@
               var cell = instance.getCell(visualRow, visualColumn);
 
               if (cell === null || cell === void 0) {
-                callback(visualRow, visualColumn, cachedCellProperties);
+                // callback(visualRow, visualColumn, cachedCellProperties); // INOA
+                handleFakeCheckbox(visualRow, visualColumn, cachedCellProperties, callback); // INOA
               } else {
                 var checkboxes = cell.querySelectorAll('input[type=checkbox]');
 
                 if (checkboxes.length > 0 && !cachedCellProperties.readOnly) {
-                  callback(checkboxes);
+                  // callback(checkboxes); // INOA                  
+                  for (var i = 0; i < checkboxes.length; i++) allCheckboxes.push(checkboxes[i]); // INOA
                 }
               }
             }
           }
+
+          if (allCheckboxes.length > 0) callback(allCheckboxes); // INOA
         }
       }
       /**
@@ -53728,6 +53748,15 @@
           this.updateCellHeader(span, col, this.instance.getColHeader);
           div.appendChild(span);
           TH.appendChild(div);
+          if (col == -1 && !TH.onmousedown) { // INOA
+            var instance = this.instance;
+            TH.onmousedown = function (event) {
+              Handsontable.activeGuid = instance.guid;
+              instance.selection.selectAll();
+              event.preventDefault();
+              stopPropagation(event);
+            };
+          }
         }
 
         this.instance.runHooks('afterGetColHeader', col, TH);
